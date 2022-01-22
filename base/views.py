@@ -1,5 +1,9 @@
 from django.shortcuts import render, redirect
-from .models import Room
+from django.contrib import messages
+from .models import Room, Topic
+from django.db.models import Q
+from django.contrib.auth.models import User
+from django.contrib.auth import authenticate, login, logout
 from .forms import RoomForm
 
 
@@ -10,14 +14,55 @@ rooms = [
 ]
 
 
+def LoginPage(request):
+
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+
+        try:
+            user = User.objects.get(username=username)
+        except:
+            messages.error(request, 'User does not exists')
+
+        user = authenticate(request, username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return redirect('home')
+        else:
+            messages.error(request, 'Username or password does not exists')
+
+    context = {}
+    return render(request, 'base/login_register.html', context)
+
+def logoutUser(request):
+
+    logout(request)
+    return redirect('home')
+
 
 def home(request):
-    rooms = Room.objects.all()
-    context = {'rooms': rooms}
+
+    if request.GET.get('q') != None:
+        q = request.GET.get('q')
+    else:
+        q = ''
+
+    rooms = Room.objects.filter(
+        Q(topic__name__icontains=q) |
+        Q(name__icontains = q) |
+        Q(description__icontains = q)
+        )
+
+    topics = Topic.objects.all()
+    room_count = rooms.count()
+
+    context = {'rooms': rooms, 'topics': topics, 'room_count': room_count}
     return render(request, 'base/home.html', context)
 
 
 def room(request, pk):
+
     room = Room.objects.get(id=pk)
     context = {'room': room}
 
@@ -36,6 +81,7 @@ def create_room(request):
 
 
 def update_room(request, pk):
+
     room = Room.objects.get(id=pk)
     form = RoomForm(instance=room)
 
@@ -49,6 +95,7 @@ def update_room(request, pk):
 
 
 def delete_room(request,pk):
+    
     room = Room.objects.get(id=pk)
     if request.method == 'POST':
         room.delete()
