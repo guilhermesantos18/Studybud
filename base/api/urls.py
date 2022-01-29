@@ -1,6 +1,7 @@
 from django.urls import path
 from . import views
 
-urlpattern = [
+urlpatterns = [
     path('', views.getRoutes),
+    path('rooms/', views.getRooms),
 ]
